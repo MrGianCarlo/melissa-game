@@ -5,61 +5,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Melissa</title>
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
+
         body {
             font-family: Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, hotpink 0%, deeppink 100%);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #FFC0CB 0%, hotpink 200%);
             margin: 0;
-            padding: 20px;
+            padding: 10px;
+            touch-action: none;
         }
 
         .game-container {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 30px;
+            padding: 15px;
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.18);
             display: flex;
             flex-direction: column;
             align-items: center;
-            max-width: 600px;
+            max-width: 90vw;
+            max-height: 95vh;
             width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         h1 {
             color: white;
-            text-align: center;
-            margin: 0 0 20px 0;
+            margin: 0;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-size: clamp(1.2rem, 4vw, 2rem);
         }
 
-        .score {
+        .score-time {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .score, .timer {
             color: white;
-            font-size: 18px;
+            font-size: clamp(0.8rem, 3vw, 1.1rem);
             font-weight: bold;
-            margin-bottom: 20px;
             text-align: center;
+        }
+
+        .timer {
+            background: rgba(231, 76, 60, 0.3);
+            padding: 5px 10px;
+            border-radius: 15px;
+            border: 2px solid #e74c3c;
+        }
+
+        .timer.warning {
+            animation: timerPulse 1s infinite;
+            background: rgba(255, 0, 0, 0.5);
+        }
+
+        @keyframes timerPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
 
         .board {
             display: grid;
-            grid-template-columns: repeat(8, 40px);
-            grid-template-rows: repeat(8, 40px);
+            grid-template-columns: repeat(8, min(5vh, 40px));
+            grid-template-rows: repeat(8, min(5vh, 40px));
             gap: 2px;
             background-color: #2c3e50;
-            padding: 10px;
+            padding: 8px;
             border-radius: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
         }
 
         .cell {
-            width: 40px;
-            height: 40px;
+            width: min(5vh, 40px);
+            height: min(5vh, 40px);
             background-color: #34495e;
             border: 1px solid #4a6741;
             border-radius: 4px;
@@ -98,20 +147,41 @@
             75% { transform: translateX(1px); }
         }
 
+        .piece-selector.dragging {
+            opacity: 0.5;
+            transform: scale(1.1);
+            z-index: 1000;
+            position: fixed;
+            pointer-events: none;
+        }
+
+        .board.drag-over {
+            background-color: #3498db;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+        }
+
+        .cell.drop-target {
+            background-color: rgba(52, 152, 219, 0.3);
+            border: 2px solid #3498db;
+        }
+
         .pieces-container {
-            display: flex;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
             justify-content: center;
-            flex-wrap: wrap;
+            width: 100%;
+            max-width: 300px;
         }
 
         .piece-selector {
             background: rgba(255, 255, 255, 0.2);
-            padding: 15px;
+            padding: 10px;
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            touch-action: none;
         }
 
         .piece-selector:hover {
@@ -132,15 +202,15 @@
         }
 
         .preview-cell {
-            width: 20px;
-            height: 20px;
+            width: min(3vh, 15px);
+            height: min(3vh, 15px);
             border-radius: 2px;
             border: 1px solid rgba(255,255,255,0.3);
         }
 
         .piece-name {
             color: white;
-            font-size: 12px;
+            font-size: clamp(0.6rem, 2.5vw, 0.8rem);
             text-align: center;
             font-weight: bold;
         }
@@ -157,19 +227,22 @@
         .controls {
             color: white;
             text-align: center;
-            margin-top: 20px;
-            font-size: 14px;
+            margin-top: 10px;
+            font-size: clamp(0.6rem, 2vw, 0.8rem);
+            line-height: 1.2;
         }
 
         .rotate-btn {
             background: #3498db;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 4px 8px;
             border-radius: 5px;
             cursor: pointer;
-            margin-left: 10px;
+            margin-left: 5px;
             transition: background 0.3s ease;
+            font-size: clamp(0.6rem, 2vw, 0.8rem);
+            touch-action: manipulation;
         }
 
         .rotate-btn:hover {
@@ -177,20 +250,70 @@
         }
 
         .line-clear {
-            animation: lineClearing 0.5s ease-in-out;
+            animation: lineClearing 1s ease-in-out;
         }
 
         @keyframes lineClearing {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; background-color: #f1c40f; }
-            100% { opacity: 1; }
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            25% {
+                opacity: 0.8;
+                background-color: #f1c40f;
+                transform: scale(1.1);
+            }
+            50% {
+                opacity: 0.4;
+                background-color: #e74c3c;
+                transform: scale(1.2);
+            }
+            75% {
+                opacity: 0.6;
+                background-color: #2ecc71;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .line-complete-effect {
+            position: absolute;
+            pointer-events: none;
+            color: #f1c40f;
+            font-weight: bold;
+            font-size: 1.5rem;
+            animation: scorePopup 2s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes scorePopup {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(-30px) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-60px) scale(0.8);
+            }
         }
     </style>
 </head>
 <body>
 <div class="game-container">
-    <h1>Melissa</h1>
-    <div class="score">Puntuación: <span id="score">0</span></div>
+    <div class="header">
+        <h1>Melissa</h1>
+        <div class="score-time">
+            <div class="score">Puntos: <span id="score">0</span></div>
+            <div class="timer" id="timer">1:00</div>
+        </div>
+    </div>
 
     <div class="board" id="board"></div>
 
@@ -276,9 +399,19 @@
             this.selectedPiece = null;
             this.selectedPieceRotation = 0;
             this.availablePieces = this.generateRandomPieces();
+            this.isDragging = false;
+            this.draggedPieceIndex = null;
+            this.dragOffset = { x: 0, y: 0 };
+
+            // Timer
+            this.timeLeft = 60; // 1 minuto
+            this.timerInterval = null;
+            this.gameOver = false;
 
             this.initBoard();
             this.initPieces();
+            this.initTouchEvents();
+            this.startTimer();
         }
 
         initBoard() {
@@ -302,6 +435,7 @@
         generateRandomPieces() {
             const pieceTypes = Object.keys(PIECES);
             const pieces = [];
+            // Solo generar exactamente 4 piezas
             for (let i = 0; i < 4; i++) {
                 const randomType = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
                 pieces.push({
@@ -332,8 +466,8 @@
 
             const preview = document.createElement('div');
             preview.className = 'piece-preview';
-            preview.style.gridTemplateColumns = `repeat(${shape[0].length}, 20px)`;
-            preview.style.gridTemplateRows = `repeat(${shape.length}, 20px)`;
+            preview.style.gridTemplateColumns = `repeat(${shape[0].length}, min(3vh, 15px))`;
+            preview.style.gridTemplateRows = `repeat(${shape.length}, min(3vh, 15px))`;
 
             shape.forEach(row => {
                 row.forEach(cell => {
@@ -365,6 +499,18 @@
             pieceDiv.appendChild(rotateBtn);
 
             pieceDiv.addEventListener('click', () => this.selectPiece(index));
+
+            // Eventos para arrastrar (escritorio)
+            pieceDiv.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.startDrag(e, index);
+            });
+
+            // Eventos táctiles (móvil)
+            pieceDiv.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startDrag(e, index);
+            }, { passive: false });
 
             return pieceDiv;
         }
@@ -463,9 +609,9 @@
                 this.updateBoard();
                 this.initPieces();
 
-                // Generar nueva pieza si quedan menos de 4
-                if (this.availablePieces.length < 4) {
-                    this.availablePieces.push(...this.generateRandomPieces());
+                // Solo generar nuevas piezas cuando no quede ninguna
+                if (this.availablePieces.length === 0) {
+                    this.availablePieces = this.generateRandomPieces();
                     this.initPieces();
                 }
             }
@@ -511,6 +657,7 @@
 
         checkAndClearLines() {
             let linesCleared = 0;
+            const clearedLines = [];
 
             // Verificar líneas horizontales
             for (let row = 0; row < 8; row++) {
@@ -518,6 +665,7 @@
                     this.animateLineClear(row, true);
                     this.board[row].fill(null);
                     linesCleared++;
+                    clearedLines.push(`Fila ${row + 1}`);
                 }
             }
 
@@ -536,12 +684,18 @@
                         this.board[row][col] = null;
                     }
                     linesCleared++;
+                    clearedLines.push(`Columna ${col + 1}`);
                 }
             }
 
             if (linesCleared > 0) {
                 this.score += linesCleared * 100;
+                this.timeLeft += linesCleared * 5; // Agregar 5 segundos por línea
+
                 document.getElementById('score').textContent = this.score;
+
+                // Mostrar animación de puntos y tiempo extra
+                this.showLineCompleteEffect(linesCleared);
             }
         }
 
@@ -555,7 +709,7 @@
                     cell.classList.add('line-clear');
                     setTimeout(() => {
                         cell.classList.remove('line-clear');
-                    }, 500);
+                    }, 1000);
                 }
             });
         }
@@ -580,6 +734,202 @@
                 if (hasPreview) cell.classList.add('preview');
                 if (hasPreviewInvalid) cell.classList.add('preview-invalid');
             });
+        }
+
+        initTouchEvents() {
+            // Eventos globales para arrastrar
+            document.addEventListener('mousemove', (e) => this.handleDrag(e));
+            document.addEventListener('mouseup', (e) => this.endDrag(e));
+
+            // Eventos táctiles globales
+            document.addEventListener('touchmove', (e) => this.handleDrag(e), { passive: false });
+            document.addEventListener('touchend', (e) => this.endDrag(e), { passive: false });
+        }
+
+        startDrag(e, pieceIndex) {
+            e.preventDefault();
+            this.isDragging = true;
+            this.draggedPieceIndex = pieceIndex;
+            this.selectedPiece = pieceIndex;
+
+            const pieceElement = document.querySelector(`[data-piece-index="${pieceIndex}"]`);
+            pieceElement.classList.add('dragging');
+
+            // Calcular offset para centrar la pieza en el cursor/dedo
+            const rect = pieceElement.getBoundingClientRect();
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            this.dragOffset.x = clientX - rect.left - rect.width / 2;
+            this.dragOffset.y = clientY - rect.top - rect.height / 2;
+
+            // Resaltar el tablero
+            document.getElementById('board').classList.add('drag-over');
+        }
+
+        handleDrag(e) {
+            if (!this.isDragging || this.draggedPieceIndex === null) return;
+
+            e.preventDefault();
+
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            const pieceElement = document.querySelector(`[data-piece-index="${this.draggedPieceIndex}"]`);
+
+            // Mover la pieza con el cursor/dedo
+            pieceElement.style.left = (clientX - this.dragOffset.x) + 'px';
+            pieceElement.style.top = (clientY - this.dragOffset.y) + 'px';
+
+            // Encontrar sobre qué celda está el cursor/dedo
+            const elementBelow = document.elementFromPoint(clientX, clientY);
+
+            // Limpiar previsualizaciones previas
+            this.clearPreview();
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('drop-target');
+            });
+
+            if (elementBelow && elementBelow.classList.contains('cell')) {
+                const row = parseInt(elementBelow.dataset.row);
+                const col = parseInt(elementBelow.dataset.col);
+                const piece = this.availablePieces[this.draggedPieceIndex];
+
+                // Mostrar previsualización
+                this.showPreview(row, col, piece);
+
+                // Resaltar celda objetivo si es válida
+                if (this.canPlacePiece(row, col, piece)) {
+                    elementBelow.classList.add('drop-target');
+                }
+            }
+        }
+
+        endDrag(e) {
+            if (!this.isDragging || this.draggedPieceIndex === null) return;
+
+            e.preventDefault();
+
+            const clientX = e.type.includes('touch') ?
+                (e.changedTouches ? e.changedTouches[0].clientX : e.clientX) : e.clientX;
+            const clientY = e.type.includes('touch') ?
+                (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) : e.clientY;
+
+            const elementBelow = document.elementFromPoint(clientX, clientY);
+
+            // Restaurar el estilo de la pieza
+            const pieceElement = document.querySelector(`[data-piece-index="${this.draggedPieceIndex}"]`);
+            pieceElement.classList.remove('dragging');
+            pieceElement.style.left = '';
+            pieceElement.style.top = '';
+            pieceElement.style.position = '';
+
+            // Quitar resaltado del tablero
+            document.getElementById('board').classList.remove('drag-over');
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.classList.remove('drop-target');
+            });
+
+            // Intentar colocar la pieza
+            if (elementBelow && elementBelow.classList.contains('cell')) {
+                const row = parseInt(elementBelow.dataset.row);
+                const col = parseInt(elementBelow.dataset.col);
+                const piece = this.availablePieces[this.draggedPieceIndex];
+
+                if (this.canPlacePiece(row, col, piece)) {
+                    this.clearPreview();
+                    this.placePiece(row, col, piece);
+                    this.availablePieces.splice(this.draggedPieceIndex, 1);
+                    this.selectedPiece = null;
+
+                    this.checkAndClearLines();
+                    this.updateBoard();
+                    this.initPieces();
+
+                    // Solo generar nuevas piezas cuando no quede ninguna
+                    if (this.availablePieces.length === 0) {
+                        this.availablePieces = this.generateRandomPieces();
+                        this.initPieces();
+                    }
+                }
+            }
+
+            // Limpiar previsualización
+            this.clearPreview();
+
+            // Reset drag state
+            this.isDragging = false;
+            this.draggedPieceIndex = null;
+        }
+
+        startTimer() {
+            this.timerInterval = setInterval(() => {
+                this.timeLeft--;
+                this.updateTimerDisplay();
+
+                if (this.timeLeft <= 0) {
+                    this.endGame();
+                }
+            }, 1000);
+        }
+
+        updateTimerDisplay() {
+            const minutes = Math.floor(this.timeLeft / 60);
+            const seconds = this.timeLeft % 60;
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = timeString;
+
+            // Añadir clase de advertencia cuando quedan menos de 30 segundos
+            if (this.timeLeft <= 30 && this.timeLeft > 0) {
+                timerElement.classList.add('warning');
+            } else {
+                timerElement.classList.remove('warning');
+            }
+        }
+
+        endGame() {
+            this.gameOver = true;
+            clearInterval(this.timerInterval);
+
+            // Deshabilitar interacciones
+            document.querySelectorAll('.piece-selector').forEach(piece => {
+                piece.style.pointerEvents = 'none';
+                piece.style.opacity = '0.5';
+            });
+
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.style.pointerEvents = 'none';
+            });
+
+            setTimeout(() => {
+                alert(`¡Tiempo agotado! Tu puntuación final: ${this.score} puntos`);
+            }, 500);
+        }
+
+        showLineCompleteEffect(linesCleared) {
+            const gameContainer = document.querySelector('.game-container');
+            const effect = document.createElement('div');
+            effect.className = 'line-complete-effect';
+            effect.innerHTML = `+${linesCleared * 100} pts<br>+${linesCleared * 5}s`;
+
+            // Posicionar el efecto cerca del tablero
+            const boardRect = document.getElementById('board').getBoundingClientRect();
+            const containerRect = gameContainer.getBoundingClientRect();
+
+            effect.style.left = (boardRect.left - containerRect.left + boardRect.width / 2) + 'px';
+            effect.style.top = (boardRect.top - containerRect.top - 20) + 'px';
+
+            gameContainer.style.position = 'relative';
+            gameContainer.appendChild(effect);
+
+            // Remover el efecto después de la animación
+            setTimeout(() => {
+                if (effect.parentNode) {
+                    effect.parentNode.removeChild(effect);
+                }
+            }, 2000);
         }
     }
 
