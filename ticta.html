@@ -576,6 +576,39 @@
             return pieceDiv;
         }
 
+        startTouchInteraction(e, pieceIndex) {
+            this.isDragDelayed = false;
+            let touchStartTime = Date.now();
+
+            // Timer para drag después de 300ms
+            this.dragTimer = setTimeout(() => {
+                this.isDragDelayed = true;
+                this.startDrag(e, pieceIndex);
+            }, 300);
+
+            // Función para manejar cuando se suelta el toque
+            const handleTouchEnd = (endEvent) => {
+                const touchDuration = Date.now() - touchStartTime;
+
+                if (this.dragTimer) {
+                    clearTimeout(this.dragTimer);
+                    this.dragTimer = null;
+                }
+
+                // Si el toque fue rápido (menos de 300ms) y no se inició drag, rotar pieza
+                if (touchDuration < 300 && !this.isDragDelayed) {
+                    endEvent.preventDefault();
+                    this.rotatePiece(pieceIndex);
+                }
+
+                // Limpiar el listener
+                document.removeEventListener('touchend', handleTouchEnd);
+            };
+
+            // Agregar listener temporal para touchend
+            document.addEventListener('touchend', handleTouchEnd, { once: true });
+        }
+
         startDragDelay(e, pieceIndex) {
             this.isDragDelayed = false;
 
