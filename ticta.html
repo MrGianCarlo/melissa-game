@@ -25,7 +25,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #FFC0CB 0%, hotpink 200%);
+            background: linear-gradient(135deg, #FFC0CB 0%, hotpink 100%);
             margin: 0;
             padding: 10px;
             touch-action: none;
@@ -232,23 +232,6 @@
             line-height: 1.2;
         }
 
-        .rotate-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-left: 5px;
-            transition: background 0.3s ease;
-            font-size: clamp(0.6rem, 2vw, 0.8rem);
-            touch-action: manipulation;
-        }
-
-        .rotate-btn:hover {
-            background: #2980b9;
-        }
-
         .line-clear {
             animation: lineClearing 1s ease-in-out;
         }
@@ -303,6 +286,77 @@
                 transform: translateY(-60px) scale(0.8);
             }
         }
+
+        /* Game Over Modal */
+        .game-over-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .game-over-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            max-width: 90vw;
+            animation: gameOverPopup 0.5s ease-out;
+        }
+
+        @keyframes gameOverPopup {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .game-over-title {
+            font-size: clamp(2rem, 6vw, 3rem);
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .final-score {
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .restart-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: clamp(1rem, 3vw, 1.2rem);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+            margin-top: 10px;
+        }
+
+        .restart-btn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.6);
+        }
+
+        .restart-btn:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -320,9 +374,18 @@
     <div class="pieces-container" id="pieces-container"></div>
 
     <div class="controls">
-        <p><strong>💻 Escritorio:</strong> Selecciona una pieza y haz clic en el tablero</p>
-        <p><strong>📱 Móvil:</strong> Arrastra las piezas directamente al tablero</p>
+        <p><strong>💻 Escritorio:</strong> Clic para girar, mantener presionado para arrastrar</p>
+        <p><strong>📱 Móvil:</strong> Toca para girar, mantén presionado para arrastrar</p>
         <p>Las líneas completas (horizontal o vertical) se eliminarán automáticamente</p>
+    </div>
+</div>
+
+<!-- Game Over Modal -->
+<div class="game-over-modal" id="gameOverModal">
+    <div class="game-over-content">
+        <div class="game-over-title">¡GAME OVER!</div>
+        <div class="final-score">Puntuación Final: <span id="finalScore">0</span> puntos</div>
+        <button class="restart-btn" onclick="restartGame()">🔄 Jugar de Nuevo</button>
     </div>
 </div>
 
@@ -402,6 +465,8 @@
             this.isDragging = false;
             this.draggedPieceIndex = null;
             this.dragOffset = { x: 0, y: 0 };
+            this.dragTimer = null;
+            this.isDragDelayed = false;
 
             // Timer
             this.timeLeft = 60; // 1 minuto
@@ -435,7 +500,6 @@
         generateRandomPieces() {
             const pieceTypes = Object.keys(PIECES);
             const pieces = [];
-            // Solo generar exactamente 4 piezas
             for (let i = 0; i < 4; i++) {
                 const randomType = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
                 pieces.push({
@@ -486,67 +550,84 @@
             name.className = 'piece-name';
             name.textContent = piece.type;
 
-            const rotateBtn = document.createElement('button');
-            rotateBtn.className = 'rotate-btn';
-            rotateBtn.textContent = '↻';
-            rotateBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.rotatePiece(index);
-            });
-
             pieceDiv.appendChild(preview);
             pieceDiv.appendChild(name);
-            pieceDiv.appendChild(rotateBtn);
 
-            pieceDiv.addEventListener('click', () => this.selectPiece(index));
-
-            // Eventos para arrastrar (escritorio)
-            pieceDiv.addEventListener('mousedown', (e) => {
+            // Eventos para clic (girar)
+            pieceDiv.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.startDrag(e, index);
+                e.stopPropagation();
+                if (!this.isDragDelayed) {
+                    this.rotatePiece(index);
+                }
             });
 
-            // Eventos táctiles (móvil)
+            // Eventos para drag con delay
+            pieceDiv.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.startDragDelay(e, index);
+            });
+
             pieceDiv.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                this.startDrag(e, index);
+                this.startDragDelay(e, index);
             }, { passive: false });
 
             return pieceDiv;
         }
 
-        selectPiece(index) {
-            // Limpiar preview anterior
-            this.clearPreview();
+        startDragDelay(e, pieceIndex) {
+            this.isDragDelayed = false;
 
-            // Deseleccionar pieza anterior
-            document.querySelectorAll('.piece-selector').forEach(el => {
-                el.classList.remove('selected');
-            });
+            // Iniciar timer para drag después de 300ms
+            this.dragTimer = setTimeout(() => {
+                this.isDragDelayed = true;
+                this.startDrag(e, pieceIndex);
+            }, 300);
 
-            // Seleccionar nueva pieza
-            this.selectedPiece = index;
-            document.querySelector(`[data-piece-index="${index}"]`).classList.add('selected');
+            // Eventos para cancelar el timer si se suelta antes
+            const cancelDrag = () => {
+                if (this.dragTimer) {
+                    clearTimeout(this.dragTimer);
+                    this.dragTimer = null;
+                }
+            };
+
+            document.addEventListener('mouseup', cancelDrag, { once: true });
+            document.addEventListener('touchend', cancelDrag, { once: true });
         }
 
         rotatePiece(index) {
+            if (this.gameOver) return;
+
             const piece = this.availablePieces[index];
             const maxRotations = PIECES[piece.type].rotations.length;
             piece.rotation = (piece.rotation + 1) % maxRotations;
 
-            // Limpiar preview antes de actualizar
             this.clearPreview();
-
             this.initPieces();
 
-            // Mantener selección si era la pieza seleccionada
             if (this.selectedPiece === index) {
                 this.selectPiece(index);
             }
         }
 
+        selectPiece(index) {
+            this.clearPreview();
+
+            document.querySelectorAll('.piece-selector').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            this.selectedPiece = index;
+            const pieceElement = document.querySelector(`[data-piece-index="${index}"]`);
+            if (pieceElement) {
+                pieceElement.classList.add('selected');
+            }
+        }
+
         handleCellHover(e) {
-            if (this.selectedPiece === null) return;
+            if (this.selectedPiece === null || this.gameOver) return;
 
             const row = parseInt(e.target.dataset.row);
             const col = parseInt(e.target.dataset.col);
@@ -590,8 +671,7 @@
         }
 
         handleCellClick(e) {
-            if (this.selectedPiece === null) {
-                alert('Primero selecciona una pieza');
+            if (this.selectedPiece === null || this.gameOver) {
                 return;
             }
 
@@ -600,21 +680,33 @@
             const piece = this.availablePieces[this.selectedPiece];
 
             if (this.canPlacePiece(row, col, piece)) {
-                this.clearPreview();
-                this.placePiece(row, col, piece);
-                this.availablePieces.splice(this.selectedPiece, 1);
-                this.selectedPiece = null;
-
-                this.checkAndClearLines();
-                this.updateBoard();
-                this.initPieces();
-
-                // Solo generar nuevas piezas cuando no quede ninguna
-                if (this.availablePieces.length === 0) {
-                    this.availablePieces = this.generateRandomPieces();
-                    this.initPieces();
-                }
+                this.placePieceAndUpdate(row, col, piece);
             }
+        }
+
+        placePieceAndUpdate(row, col, piece) {
+            this.clearPreview();
+            this.placePiece(row, col, piece);
+
+            // Remover la pieza usada
+            this.availablePieces.splice(this.selectedPiece, 1);
+            this.selectedPiece = null;
+
+            this.checkAndClearLines();
+            this.updateBoard();
+
+            // Agregar nueva pieza para mantener siempre 4
+            this.addNewPiece();
+            this.initPieces();
+        }
+
+        addNewPiece() {
+            const pieceTypes = Object.keys(PIECES);
+            const randomType = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+            this.availablePieces.push({
+                type: randomType,
+                rotation: 0
+            });
         }
 
         canPlacePiece(startRow, startCol, piece) {
@@ -657,7 +749,6 @@
 
         checkAndClearLines() {
             let linesCleared = 0;
-            const clearedLines = [];
 
             // Verificar líneas horizontales
             for (let row = 0; row < 8; row++) {
@@ -665,7 +756,6 @@
                     this.animateLineClear(row, true);
                     this.board[row].fill(null);
                     linesCleared++;
-                    clearedLines.push(`Fila ${row + 1}`);
                 }
             }
 
@@ -684,17 +774,14 @@
                         this.board[row][col] = null;
                     }
                     linesCleared++;
-                    clearedLines.push(`Columna ${col + 1}`);
                 }
             }
 
             if (linesCleared > 0) {
                 this.score += linesCleared * 100;
-                this.timeLeft += linesCleared * 5; // Agregar 5 segundos por línea
+                this.timeLeft += linesCleared * 5;
 
                 document.getElementById('score').textContent = this.score;
-
-                // Mostrar animación de puntos y tiempo extra
                 this.showLineCompleteEffect(linesCleared);
             }
         }
@@ -721,7 +808,6 @@
                 const col = parseInt(cell.dataset.col);
                 const cellValue = this.board[row][col];
 
-                // Preservar clases de preview
                 const hasPreview = cell.classList.contains('preview');
                 const hasPreviewInvalid = cell.classList.contains('preview-invalid');
 
@@ -730,32 +816,31 @@
                     cell.classList.add('filled', cellValue);
                 }
 
-                // Restaurar clases de preview si las tenía
                 if (hasPreview) cell.classList.add('preview');
                 if (hasPreviewInvalid) cell.classList.add('preview-invalid');
             });
         }
 
         initTouchEvents() {
-            // Eventos globales para arrastrar
             document.addEventListener('mousemove', (e) => this.handleDrag(e));
             document.addEventListener('mouseup', (e) => this.endDrag(e));
 
-            // Eventos táctiles globales
             document.addEventListener('touchmove', (e) => this.handleDrag(e), { passive: false });
             document.addEventListener('touchend', (e) => this.endDrag(e), { passive: false });
         }
 
         startDrag(e, pieceIndex) {
-            e.preventDefault();
+            if (this.gameOver) return;
+
             this.isDragging = true;
             this.draggedPieceIndex = pieceIndex;
             this.selectedPiece = pieceIndex;
 
             const pieceElement = document.querySelector(`[data-piece-index="${pieceIndex}"]`);
-            pieceElement.classList.add('dragging');
+            if (pieceElement) {
+                pieceElement.classList.add('dragging');
+            }
 
-            // Calcular offset para centrar la pieza en el cursor/dedo
             const rect = pieceElement.getBoundingClientRect();
             const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
             const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
@@ -763,12 +848,11 @@
             this.dragOffset.x = clientX - rect.left - rect.width / 2;
             this.dragOffset.y = clientY - rect.top - rect.height / 2;
 
-            // Resaltar el tablero
             document.getElementById('board').classList.add('drag-over');
         }
 
         handleDrag(e) {
-            if (!this.isDragging || this.draggedPieceIndex === null) return;
+            if (!this.isDragging || this.draggedPieceIndex === null || this.gameOver) return;
 
             e.preventDefault();
 
@@ -776,15 +860,13 @@
             const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
 
             const pieceElement = document.querySelector(`[data-piece-index="${this.draggedPieceIndex}"]`);
+            if (pieceElement) {
+                pieceElement.style.left = (clientX - this.dragOffset.x) + 'px';
+                pieceElement.style.top = (clientY - this.dragOffset.y) + 'px';
+            }
 
-            // Mover la pieza con el cursor/dedo
-            pieceElement.style.left = (clientX - this.dragOffset.x) + 'px';
-            pieceElement.style.top = (clientY - this.dragOffset.y) + 'px';
-
-            // Encontrar sobre qué celda está el cursor/dedo
             const elementBelow = document.elementFromPoint(clientX, clientY);
 
-            // Limpiar previsualizaciones previas
             this.clearPreview();
             document.querySelectorAll('.cell').forEach(cell => {
                 cell.classList.remove('drop-target');
@@ -795,10 +877,8 @@
                 const col = parseInt(elementBelow.dataset.col);
                 const piece = this.availablePieces[this.draggedPieceIndex];
 
-                // Mostrar previsualización
                 this.showPreview(row, col, piece);
 
-                // Resaltar celda objetivo si es válida
                 if (this.canPlacePiece(row, col, piece)) {
                     elementBelow.classList.add('drop-target');
                 }
@@ -817,49 +897,33 @@
 
             const elementBelow = document.elementFromPoint(clientX, clientY);
 
-            // Restaurar el estilo de la pieza
             const pieceElement = document.querySelector(`[data-piece-index="${this.draggedPieceIndex}"]`);
-            pieceElement.classList.remove('dragging');
-            pieceElement.style.left = '';
-            pieceElement.style.top = '';
-            pieceElement.style.position = '';
+            if (pieceElement) {
+                pieceElement.classList.remove('dragging');
+                pieceElement.style.left = '';
+                pieceElement.style.top = '';
+                pieceElement.style.position = '';
+            }
 
-            // Quitar resaltado del tablero
             document.getElementById('board').classList.remove('drag-over');
             document.querySelectorAll('.cell').forEach(cell => {
                 cell.classList.remove('drop-target');
             });
 
-            // Intentar colocar la pieza
             if (elementBelow && elementBelow.classList.contains('cell')) {
                 const row = parseInt(elementBelow.dataset.row);
                 const col = parseInt(elementBelow.dataset.col);
                 const piece = this.availablePieces[this.draggedPieceIndex];
 
                 if (this.canPlacePiece(row, col, piece)) {
-                    this.clearPreview();
-                    this.placePiece(row, col, piece);
-                    this.availablePieces.splice(this.draggedPieceIndex, 1);
-                    this.selectedPiece = null;
-
-                    this.checkAndClearLines();
-                    this.updateBoard();
-                    this.initPieces();
-
-                    // Solo generar nuevas piezas cuando no quede ninguna
-                    if (this.availablePieces.length === 0) {
-                        this.availablePieces = this.generateRandomPieces();
-                        this.initPieces();
-                    }
+                    this.placePieceAndUpdate(row, col, piece);
                 }
             }
 
-            // Limpiar previsualización
             this.clearPreview();
-
-            // Reset drag state
             this.isDragging = false;
             this.draggedPieceIndex = null;
+            this.isDragDelayed = false;
         }
 
         startTimer() {
@@ -881,7 +945,6 @@
             const timerElement = document.getElementById('timer');
             timerElement.textContent = timeString;
 
-            // Añadir clase de advertencia cuando quedan menos de 30 segundos
             if (this.timeLeft <= 30 && this.timeLeft > 0) {
                 timerElement.classList.add('warning');
             } else {
@@ -903,9 +966,9 @@
                 cell.style.pointerEvents = 'none';
             });
 
-            setTimeout(() => {
-                alert(`¡Tiempo agotado! Tu puntuación final: ${this.score} puntos`);
-            }, 500);
+            // Mostrar modal de Game Over
+            document.getElementById('finalScore').textContent = this.score;
+            document.getElementById('gameOverModal').style.display = 'flex';
         }
 
         showLineCompleteEffect(linesCleared) {
@@ -914,7 +977,6 @@
             effect.className = 'line-complete-effect';
             effect.innerHTML = `+${linesCleared * 100} pts<br>+${linesCleared * 5}s`;
 
-            // Posicionar el efecto cerca del tablero
             const boardRect = document.getElementById('board').getBoundingClientRect();
             const containerRect = gameContainer.getBoundingClientRect();
 
@@ -924,7 +986,6 @@
             gameContainer.style.position = 'relative';
             gameContainer.appendChild(effect);
 
-            // Remover el efecto después de la animación
             setTimeout(() => {
                 if (effect.parentNode) {
                     effect.parentNode.removeChild(effect);
@@ -933,8 +994,19 @@
         }
     }
 
+    // Variable global para el juego
+    let game;
+
+    // Función para reiniciar el juego
+    function restartGame() {
+        // Ocultar modal
+        document.getElementById('gameOverModal').style.display = 'none';
+
+        // Crear nuevo juego
+        game = new TetrisGame();
+    }
+
     // Inicializar el juego
-    const game = new TetrisGame();
-</script>
+    game = new TetrisGame();</script>
 </body>
 </html>
