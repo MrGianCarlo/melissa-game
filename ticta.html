@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melissa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin: 0 0 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .score {
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 40px);
+            grid-template-rows: repeat(8, 40px);
+            gap: 2px;
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #34495e;
+            border: 1px solid #4a6741;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .cell:hover {
+            background-color: #4a6741;
+        }
+
+        .cell.filled {
+            box-shadow: inset 2px 2px 4px rgba(255,255,255,0.3);
+        }
+
+        .pieces-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .piece-selector {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .piece-selector:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .piece-selector.selected {
+            border: 2px solid #f1c40f;
+            background: rgba(241, 196, 15, 0.3);
+        }
+
+        .piece-preview {
+            display: grid;
+            gap: 2px;
+            margin-bottom: 5px;
+        }
+
+        .preview-cell {
+            width: 20px;
+            height: 20px;
+            border-radius: 2px;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .piece-name {
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Colores para cada tipo de pieza */
+        .I-piece { background-color: #00f5ff; }
+        .O-piece { background-color: #ffd700; }
+        .T-piece { background-color: #800080; }
+        .S-piece { background-color: #00ff00; }
+        .Z-piece { background-color: #ff0000; }
+        .J-piece { background-color: #0000ff; }
+        .L-piece { background-color: #ff8c00; }
+
+        .controls {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .rotate-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .rotate-btn:hover {
+            background: #2980b9;
+        }
+
+        .line-clear {
+            animation: lineClearing 0.5s ease-in-out;
+        }
+
+        @keyframes lineClearing {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; background-color: #f1c40f; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <h1>Melissa</h1>
+    <div class="score">Puntuación: <span id="score">0</span></div>
+
+    <div class="board" id="board"></div>
+
+    <div class="pieces-container" id="pieces-container"></div>
+
+    <div class="controls">
+        <p>Selecciona una pieza y haz clic en el tablero para colocarla</p>
+        <p>Las líneas completas (horizontal o vertical) se eliminarán automáticamente</p>
+    </div>
+</div>
+
+<script>
+    // Definición de las piezas de Tetris
+    const PIECES = {
+        I: {
+            name: 'I',
+            rotations: [
+                [[1,1,1,1]],
+                [[1],[1],[1],[1]]
+            ],
+            color: 'I-piece'
+        },
+        O: {
+            name: 'O',
+            rotations: [
+                [[1,1],[1,1]]
+            ],
+            color: 'O-piece'
+        },
+        T: {
+            name: 'T',
+            rotations: [
+                [[0,1,0],[1,1,1]],
+                [[1,0],[1,1],[1,0]],
+                [[1,1,1],[0,1,0]],
+                [[0,1],[1,1],[0,1]]
+            ],
+            color: 'T-piece'
+        },
+        S: {
+            name: 'S',
+            rotations: [
+                [[0,1,1],[1,1,0]],
+                [[1,0],[1,1],[0,1]]
+            ],
+            color: 'S-piece'
+        },
+        Z: {
+            name: 'Z',
+            rotations: [
+                [[1,1,0],[0,1,1]],
+                [[0,1],[1,1],[1,0]]
+            ],
+            color: 'Z-piece'
+        },
+        J: {
+            name: 'J',
+            rotations: [
+                [[1,0,0],[1,1,1]],
+                [[1,1],[1,0],[1,0]],
+                [[1,1,1],[0,0,1]],
+                [[0,1],[0,1],[1,1]]
+            ],
+            color: 'J-piece'
+        },
+        L: {
+            name: 'L',
+            rotations: [
+                [[0,0,1],[1,1,1]],
+                [[1,0],[1,0],[1,1]],
+                [[1,1,1],[1,0,0]],
+                [[1,1],[0,1],[0,1]]
+            ],
+            color: 'L-piece'
+        }
+    };
+
+    class TetrisGame {
+        constructor() {
+            this.board = Array(8).fill().map(() => Array(8).fill(null));
+            this.score = 0;
+            this.selectedPiece = null;
+            this.selectedPieceRotation = 0;
+            this.availablePieces = this.generateRandomPieces();
+
+            this.initBoard();
+            this.initPieces();
+        }
+
+        initBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', (e) => this.handleCellClick(e));
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        generateRandomPieces() {
+            const pieceTypes = Object.keys(PIECES);
+            const pieces = [];
+            for (let i = 0; i < 4; i++) {
+                const randomType = pieceTypes[Math.floor(Math.random() * pieceTypes.length)];
+                pieces.push({
+                    type: randomType,
+                    rotation: 0
+                });
+            }
+            return pieces;
+        }
+
+        initPieces() {
+            const container = document.getElementById('pieces-container');
+            container.innerHTML = '';
+
+            this.availablePieces.forEach((piece, index) => {
+                const pieceElement = this.createPieceElement(piece, index);
+                container.appendChild(pieceElement);
+            });
+        }
+
+        createPieceElement(piece, index) {
+            const pieceDiv = document.createElement('div');
+            pieceDiv.className = 'piece-selector';
+            pieceDiv.dataset.pieceIndex = index;
+
+            const pieceData = PIECES[piece.type];
+            const shape = pieceData.rotations[piece.rotation];
+
+            const preview = document.createElement('div');
+            preview.className = 'piece-preview';
+            preview.style.gridTemplateColumns = `repeat(${shape[0].length}, 20px)`;
+            preview.style.gridTemplateRows = `repeat(${shape.length}, 20px)`;
+
+            shape.forEach(row => {
+                row.forEach(cell => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'preview-cell';
+                    if (cell) {
+                        cellDiv.classList.add(pieceData.color);
+                    } else {
+                        cellDiv.style.opacity = '0.3';
+                    }
+                    preview.appendChild(cellDiv);
+                });
+            });
+
+            const name = document.createElement('div');
+            name.className = 'piece-name';
+            name.textContent = piece.type;
+
+            const rotateBtn = document.createElement('button');
+            rotateBtn.className = 'rotate-btn';
+            rotateBtn.textContent = '↻';
+            rotateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.rotatePiece(index);
+            });
+
+            pieceDiv.appendChild(preview);
+            pieceDiv.appendChild(name);
+            pieceDiv.appendChild(rotateBtn);
+
+            pieceDiv.addEventListener('click', () => this.selectPiece(index));
+
+            return pieceDiv;
+        }
+
+        selectPiece(index) {
+            // Deseleccionar pieza anterior
+            document.querySelectorAll('.piece-selector').forEach(el => {
+                el.classList.remove('selected');
+            });
+
+            // Seleccionar nueva pieza
+            this.selectedPiece = index;
+            document.querySelector(`[data-piece-index="${index}"]`).classList.add('selected');
+        }
+
+        rotatePiece(index) {
+            const piece = this.availablePieces[index];
+            const maxRotations = PIECES[piece.type].rotations.length;
+            piece.rotation = (piece.rotation + 1) % maxRotations;
+            this.initPieces();
+
+            // Mantener selección si era la pieza seleccionada
+            if (this.selectedPiece === index) {
+                this.selectPiece(index);
+            }
+        }
+
+        handleCellClick(e) {
+            if (this.selectedPiece === null) {
+                alert('Primero selecciona una pieza');
+                return;
+            }
+
+            const row = parseInt(e.target.dataset.row);
+            const col = parseInt(e.target.dataset.col);
+            const piece = this.availablePieces[this.selectedPiece];
+
+            if (this.canPlacePiece(row, col, piece)) {
+                this.placePiece(row, col, piece);
+                this.availablePieces.splice(this.selectedPiece, 1);
+                this.selectedPiece = null;
+
+                this.checkAndClearLines();
+                this.updateBoard();
+                this.initPieces();
+
+                // Generar nueva pieza si quedan menos de 4
+                if (this.availablePieces.length < 4) {
+                    this.availablePieces.push(...this.generateRandomPieces());
+                    this.initPieces();
+                }
+            }
+        }
+
+        canPlacePiece(startRow, startCol, piece) {
+            const pieceData = PIECES[piece.type];
+            const shape = pieceData.rotations[piece.rotation];
+
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col]) {
+                        const boardRow = startRow + row;
+                        const boardCol = startCol + col;
+
+                        if (boardRow >= 8 || boardCol >= 8 || boardRow < 0 || boardCol < 0) {
+                            return false;
+                        }
+
+                        if (this.board[boardRow][boardCol] !== null) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        placePiece(startRow, startCol, piece) {
+            const pieceData = PIECES[piece.type];
+            const shape = pieceData.rotations[piece.rotation];
+
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col]) {
+                        const boardRow = startRow + row;
+                        const boardCol = startCol + col;
+                        this.board[boardRow][boardCol] = pieceData.color;
+                    }
+                }
+            }
+        }
+
+        checkAndClearLines() {
+            let linesCleared = 0;
+
+            // Verificar líneas horizontales
+            for (let row = 0; row < 8; row++) {
+                if (this.board[row].every(cell => cell !== null)) {
+                    this.animateLineClear(row, true);
+                    this.board[row].fill(null);
+                    linesCleared++;
+                }
+            }
+
+            // Verificar líneas verticales
+            for (let col = 0; col < 8; col++) {
+                let columnFull = true;
+                for (let row = 0; row < 8; row++) {
+                    if (this.board[row][col] === null) {
+                        columnFull = false;
+                        break;
+                    }
+                }
+                if (columnFull) {
+                    this.animateLineClear(col, false);
+                    for (let row = 0; row < 8; row++) {
+                        this.board[row][col] = null;
+                    }
+                    linesCleared++;
+                }
+            }
+
+            if (linesCleared > 0) {
+                this.score += linesCleared * 100;
+                document.getElementById('score').textContent = this.score;
+            }
+        }
+
+        animateLineClear(lineIndex, isRow) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+
+                if ((isRow && row === lineIndex) || (!isRow && col === lineIndex)) {
+                    cell.classList.add('line-clear');
+                    setTimeout(() => {
+                        cell.classList.remove('line-clear');
+                    }, 500);
+                }
+            });
+        }
+
+        updateBoard() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const cellValue = this.board[row][col];
+
+                cell.className = 'cell';
+                if (cellValue) {
+                    cell.classList.add('filled', cellValue);
+                }
+            });
+        }
+    }
+
+    // Inicializar el juego
+    const game = new TetrisGame();
+</script>
+</body>
+</html>
