@@ -8,7 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -23,6 +23,11 @@
             padding: 30px;
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
             border: 1px solid rgba(255, 255, 255, 0.18);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 600px;
+            width: 100%;
         }
 
         h1 {
@@ -69,6 +74,30 @@
             box-shadow: inset 2px 2px 4px rgba(255,255,255,0.3);
         }
 
+        .cell.preview {
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 2px dashed #f1c40f;
+            animation: pulse 1s infinite;
+        }
+
+        .cell.preview-invalid {
+            background-color: rgba(255, 0, 0, 0.3);
+            border: 2px dashed #e74c3c;
+            animation: shake 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-1px); }
+            75% { transform: translateX(1px); }
+        }
+
         .pieces-container {
             display: flex;
             gap: 20px;
@@ -93,6 +122,7 @@
         .piece-selector.selected {
             border: 2px solid #f1c40f;
             background: rgba(241, 196, 15, 0.3);
+            transform: scale(1.05);
         }
 
         .piece-preview {
@@ -261,6 +291,8 @@
                     cell.dataset.row = row;
                     cell.dataset.col = col;
                     cell.addEventListener('click', (e) => this.handleCellClick(e));
+                    cell.addEventListener('mouseenter', (e) => this.handleCellHover(e));
+                    cell.addEventListener('mouseleave', () => this.clearPreview());
                     boardElement.appendChild(cell);
                 }
             }
@@ -337,6 +369,9 @@
         }
 
         selectPiece(index) {
+            // Limpiar preview anterior
+            this.clearPreview();
+
             // Deseleccionar pieza anterior
             document.querySelectorAll('.piece-selector').forEach(el => {
                 el.classList.remove('selected');
@@ -351,11 +386,59 @@
             const piece = this.availablePieces[index];
             const maxRotations = PIECES[piece.type].rotations.length;
             piece.rotation = (piece.rotation + 1) % maxRotations;
+
+            // Limpiar preview antes de actualizar
+            this.clearPreview();
+
             this.initPieces();
 
             // Mantener selección si era la pieza seleccionada
             if (this.selectedPiece === index) {
                 this.selectPiece(index);
+            }
+        }
+
+        handleCellHover(e) {
+            if (this.selectedPiece === null) return;
+
+            const row = parseInt(e.target.dataset.row);
+            const col = parseInt(e.target.dataset.col);
+            const piece = this.availablePieces[this.selectedPiece];
+
+            this.clearPreview();
+            this.showPreview(row, col, piece);
+        }
+
+        clearPreview() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.classList.remove('preview', 'preview-invalid');
+            });
+        }
+
+        showPreview(startRow, startCol, piece) {
+            const pieceData = PIECES[piece.type];
+            const shape = pieceData.rotations[piece.rotation];
+            const canPlace = this.canPlacePiece(startRow, startCol, piece);
+
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col]) {
+                        const boardRow = startRow + row;
+                        const boardCol = startCol + col;
+
+                        if (boardRow >= 0 && boardRow < 8 && boardCol >= 0 && boardCol < 8) {
+                            const cellElement = document.querySelector(`[data-row="${boardRow}"][data-col="${boardCol}"]`);
+                            if (cellElement && !cellElement.classList.contains('filled')) {
+                                if (canPlace) {
+                                    cellElement.classList.add('preview');
+                                } else {
+                                    cellElement.classList.add('preview-invalid');
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -370,6 +453,7 @@
             const piece = this.availablePieces[this.selectedPiece];
 
             if (this.canPlacePiece(row, col, piece)) {
+                this.clearPreview();
                 this.placePiece(row, col, piece);
                 this.availablePieces.splice(this.selectedPiece, 1);
                 this.selectedPiece = null;
@@ -482,10 +566,18 @@
                 const col = parseInt(cell.dataset.col);
                 const cellValue = this.board[row][col];
 
+                // Preservar clases de preview
+                const hasPreview = cell.classList.contains('preview');
+                const hasPreviewInvalid = cell.classList.contains('preview-invalid');
+
                 cell.className = 'cell';
                 if (cellValue) {
                     cell.classList.add('filled', cellValue);
                 }
+
+                // Restaurar clases de preview si las tenía
+                if (hasPreview) cell.classList.add('preview');
+                if (hasPreviewInvalid) cell.classList.add('preview-invalid');
             });
         }
     }
