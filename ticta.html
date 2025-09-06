@@ -552,6 +552,11 @@
                 padding: 12px 15px;
             }
 
+            .header-shuffle-btn {
+                padding: 6px 10px;
+                font-size: clamp(0.6rem, 2vw, 0.8rem);
+            }
+
             .board {
                 grid-template-columns: repeat(8, min(5.5vh, 40px));
                 grid-template-rows: repeat(8, min(5.5vh, 40px));
@@ -576,6 +581,16 @@
 
             .piece-selector {
                 padding: 12px;
+            }
+
+            .score-time {
+                gap: 10px;
+                justify-content: center;
+            }
+
+            .header-shuffle-btn {
+                padding: 5px 8px;
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -707,8 +722,9 @@
             this.dragOffset = { x: 0, y: 0 };
             this.dragTimer = null;
             this.isDragDelayed = false;
+            this.dragTargetPos = null; // Nueva propiedad para almacenar la posición objetivo
 
-            // Timer - Cambiar a 5 minutos (300 segundos)
+            // Timer - 5 minutos (300 segundos)
             this.timeLeft = 300;
             this.timerInterval = null;
             this.gameOver = false;
