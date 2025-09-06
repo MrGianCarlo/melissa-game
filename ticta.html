@@ -813,11 +813,10 @@
             pieceDiv.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (!this.isDragDelayed) {
+                if (!this.isDragDelayed && !('ontouchstart' in window)) {
                     this.rotatePiece(index);
                 }
             });
-
             // Eventos para drag con delay
             pieceDiv.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -834,18 +833,27 @@
 
         startDragDelay(e, pieceIndex) {
             this.isDragDelayed = false;
+            this.touchStartTime = Date.now();
 
-            // Iniciar timer para drag después de 300ms
+            // Iniciar timer para drag después de 400ms
             this.dragTimer = setTimeout(() => {
                 this.isDragDelayed = true;
                 this.startDrag(e, pieceIndex);
-            }, 300);
+            }, 400);
 
             // Eventos para cancelar el timer si se suelta antes
-            const cancelDrag = () => {
+            const cancelDrag = (event) => {
                 if (this.dragTimer) {
                     clearTimeout(this.dragTimer);
                     this.dragTimer = null;
+                }
+
+                // Si es un toque rápido (menos de 400ms), rotar pieza
+                const touchDuration = Date.now() - this.touchStartTime;
+                if (touchDuration < 400 && !this.isDragDelayed) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    this.rotatePiece(pieceIndex);
                 }
             };
 
